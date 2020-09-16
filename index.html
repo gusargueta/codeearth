@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>three.js webgl - OBJLoader + MTLLoader</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+</head>
+
+<body>
+
+    <script type="module">
+
+        import * as THREE from 'https://unpkg.com/three@0.120.0/build/three.module.js';
+        import { OBJLoader } from 'https://unpkg.com/three@0.120.0/examples/jsm/loaders/OBJLoader.js';
+        import { MTLLoader } from 'https://unpkg.com/three@0.120.0/examples/jsm/loaders/MTLLoader.js';
+        import { DDSLoader } from 'https://unpkg.com/three@0.120.0/examples/jsm/loaders/DDSLoader.js';
+
+
+        var materialLocation = 'https://cdn.jsdelivr.net/gh/gusargueta/codeearth@0.0.1/assets/ce.mtl';
+        var objectLocation = 'https://cdn.jsdelivr.net/gh/gusargueta/codeearth@0.0.1/assets/ce.obj';
+
+        var container;
+        var htmlEmbed;
+
+        var camera, scene, renderer;
+        var ambientLight, directionalLight;
+
+        var mouseX = 0, mouseY = 0;
+
+        var windowHalfX = window.innerWidth / 2;
+        var windowHalfY = vh(60) / 3;
+
+
+        init();
+        animate();
+
+        window.dispatchEvent(new Event('resize'));
+
+        function init() {
+            container = document.createElement( 'div' );
+            htmlEmbed = document.getElementById('code-earth-3d');
+            htmlEmbed.appendChild( container );
+
+            camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 20000 );
+            window.testCamera = camera;
+            camera.position.x = 0;
+            camera.position.y = 0;
+            camera.position.z = 30;
+            camera.position.set( - 60, 55, 30 );
+
+            // scene
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('black');
+
+            // directionalLight = new THREE.DirectionalLight( 0xc8c8c8, 1 );
+            // directionalLight.position.set( 0, 1, 0 );
+            // directionalLight.target.position.set(1, -1, 1);
+            // directionalLight.castShadow = true;
+            // scene.add( directionalLight );
+            // scene.add( directionalLight.target );
+
+            var hemiLight = new THREE.HemisphereLight( 0xffffff, 0x444444 );
+            hemiLight.position.set( 0, 20, 0 );
+            scene.add( hemiLight );
+
+            var directionalLight = new THREE.DirectionalLight( 0xffffff );
+            directionalLight.position.set( - 3, 10, - 10 );
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.top = 2;
+            directionalLight.shadow.camera.bottom = - 2;
+            directionalLight.shadow.camera.left = - 2;
+            directionalLight.shadow.camera.right = 2;
+            directionalLight.shadow.camera.near = 0.1;
+            directionalLight.shadow.camera.far = 40;
+            scene.add( directionalLight );
+
+            window.testLight = directionalLight;
+
+            // var light = new THREE.DirectionalLight( 0xc8c8c8, 1 );
+            // light.position.set( 50, 200, 100 );
+            // light.position.multiplyScalar( 1.3 );
+
+            // light.castShadow = true;
+
+            // light.shadow.mapSize.width = 1024;
+            // light.shadow.mapSize.height = 1024;
+
+            // var d = 300;
+
+            // light.shadow.camera.left = - d;
+            // light.shadow.camera.right = d;
+            // light.shadow.camera.top = d;
+            // light.shadow.camera.bottom = - d;
+
+            // light.shadow.camera.far = 1000;
+
+            // scene.add( light );
+
+            // var ambientLight = new THREE.AmbientLight( 0x404040 );
+            // ambientLight = new THREE.AmbientLight( 0xc8c8c8, 1 );
+            // scene.add( ambientLight );
+
+            // var pointLight = new THREE.PointLight( 0xffffff, 0.8 );
+            // pointLight.castShadow = true;
+
+            // camera.add( pointLight );
+            // scene.add( camera );
+
+            // model
+
+            var onProgress = function ( xhr ) {
+
+                if ( xhr.lengthComputable ) {
+
+                    var percentComplete = xhr.loaded / xhr.total * 100;
+                    console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
+
+                }
+
+            };
+
+            var onError = function () { };
+
+            var manager = new THREE.LoadingManager();
+            manager.addHandler( /\.dds$/i, new DDSLoader() );
+
+            // comment in the following line and import TGALoader if your asset uses TGA textures
+            // manager.addHandler( /\.tga$/i, new TGALoader() );
+
+            new MTLLoader( manager )
+                .load( materialLocation, function ( materials ) {
+
+                    window.materials = materials;
+
+                    materials.preload();
+
+                    new OBJLoader( manager )
+                        .setMaterials( materials )
+                        .load( objectLocation, function ( object ) {
+                            // object.position.x = 10;
+                            // object.position.y = - 6;
+
+                            // object.castShadow = true
+                            object.receiveShadow = true
+
+                            object.rotation.x = 0.7
+                            object.rotation.y = -0.8;
+                            // object.rotation.z = 5;
+
+                            // object.scale.z = 1;
+
+                            window.testObject = object;
+
+                            scene.add( object );
+
+                        }, onProgress, onError );
+
+                } );
+
+            //
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+
+            renderer.setPixelRatio( window.devicePixelRatio );
+            renderer.setSize( window.innerWidth, vh(60) );
+            container.appendChild( renderer.domElement );
+
+            document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+            //
+
+            window.addEventListener( 'resize', onWindowResize, false );
+
+        }
+        function vh(v) {
+            var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+            return (v * h) / 100;
+        }
+        function vw(v) {
+            var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+            return (v * w) / 100;
+        }
+        function onWindowResize() {
+            const height = vh(60);
+
+            windowHalfX = window.innerWidth / 2;
+            windowHalfY = height / 2;
+
+            camera.aspect = window.innerWidth / height;
+            camera.updateProjectionMatrix();
+
+            
+            renderer.setSize( window.innerWidth, height );
+
+        }
+
+        function onDocumentMouseMove( event ) {
+
+            mouseX = ( event.clientX - windowHalfX ) / 40;
+            mouseY = ( event.clientY - windowHalfY ) / 80;
+
+        }
+
+        //
+
+        function animate() {
+
+            requestAnimationFrame( animate );
+            render();
+
+        }
+
+        function render() {
+
+            camera.position.x += ( mouseX - camera.position.x ) * .05;
+            camera.position.y += ( - mouseY - camera.position.y ) * .05;
+
+            camera.lookAt( scene.position );
+
+            renderer.render( scene, camera );
+
+        }
+
+    </script>
+
+    <div id="code-earth-3d"></div>
+</body>
+
+</html>
